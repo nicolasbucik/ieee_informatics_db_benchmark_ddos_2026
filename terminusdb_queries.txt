@@ -1,0 +1,188 @@
+# TerminusDB WOQL JSON templates used by the benchmark
+# Experiment values: USER_ID_1=297358566, USER_ID_2=301529877
+# Replace {{USER_ID_1}} and {{USER_ID_2}} before execution.
+# Predicate used by the experiment: terminusdb:///schema#_from
+
+=== FindFriends / Document ===
+{
+  "query": {
+    "@type": "Triple",
+    "subject": {"@type": "NodeValue", "node": "terminusdb:///data/User/{{USER_ID_1}}"},
+    "predicate": {"@type": "NodeValue", "node": "terminusdb:///schema#_from"},
+    "object": {"@type": "Value", "variable": "Friend"}
+  }
+}
+
+=== FindFriends / Graph ===
+{
+  "query": {
+    "@type": "Path",
+    "subject": {"@type": "Value", "node": "terminusdb:///data/User/{{USER_ID_1}}"},
+    "pattern": {"@type": "PathPredicate", "predicate": "terminusdb:///schema#_from"},
+    "object": {"@type": "Value", "variable": "Friend"}
+  }
+}
+
+=== FindFriendsOfFriends / Document ===
+{
+  "query": {
+    "@type": "And",
+    "and": [
+      {
+        "@type": "Triple",
+        "subject": {"@type": "NodeValue", "node": "terminusdb:///data/User/{{USER_ID_1}}"},
+        "predicate": {"@type": "NodeValue", "node": "terminusdb:///schema#_from"},
+        "object": {"@type": "Value", "variable": "Friend"}
+      },
+      {
+        "@type": "Triple",
+        "subject": {"@type": "NodeValue", "variable": "Friend"},
+        "predicate": {"@type": "NodeValue", "node": "terminusdb:///schema#_from"},
+        "object": {"@type": "Value", "variable": "FriendOfFriend"}
+      }
+    ]
+  }
+}
+
+=== FindFriendsOfFriends / Graph ===
+{
+  "query": {
+    "@type": "Path",
+    "subject": {"@type": "Value", "node": "terminusdb:///data/User/{{USER_ID_1}}"},
+    "pattern": {
+      "@type": "PathSequence",
+      "sequence": [
+        {"@type": "PathPredicate", "predicate": "terminusdb:///schema#_from"},
+        {"@type": "PathPredicate", "predicate": "terminusdb:///schema#_from"}
+      ]
+    },
+    "object": {"@type": "Value", "variable": "FriendOfFriend"}
+  }
+}
+
+=== FindMutualFriends / Document ===
+{
+  "query": {
+    "@type": "And",
+    "and": [
+      {
+        "@type": "Triple",
+        "subject": {"@type": "NodeValue", "node": "terminusdb:///data/User/{{USER_ID_1}}"},
+        "predicate": {"@type": "NodeValue", "node": "terminusdb:///schema#_from"},
+        "object": {"@type": "Value", "variable": "Mutual"}
+      },
+      {
+        "@type": "Triple",
+        "subject": {"@type": "NodeValue", "node": "terminusdb:///data/User/{{USER_ID_2}}"},
+        "predicate": {"@type": "NodeValue", "node": "terminusdb:///schema#_from"},
+        "object": {"@type": "Value", "variable": "Mutual"}
+      }
+    ]
+  }
+}
+
+=== FindMutualFriends / Graph ===
+{
+  "query": {
+    "@type": "And",
+    "and": [
+      {
+        "@type": "Path",
+        "subject": {"@type": "Value", "node": "terminusdb:///data/User/{{USER_ID_1}}"},
+        "pattern": {"@type": "PathPredicate", "predicate": "terminusdb:///schema#_from"},
+        "object": {"@type": "Value", "variable": "Mutual"}
+      },
+      {
+        "@type": "Path",
+        "subject": {"@type": "Value", "node": "terminusdb:///data/User/{{USER_ID_2}}"},
+        "pattern": {"@type": "PathPredicate", "predicate": "terminusdb:///schema#_from"},
+        "object": {"@type": "Value", "variable": "Mutual"}
+      }
+    ]
+  }
+}
+
+=== CountFriends / Document ===
+{
+  "query": {
+    "@type": "Triple",
+    "subject": {"@type": "NodeValue", "node": "terminusdb:///data/User/{{USER_ID_1}}"},
+    "predicate": {"@type": "NodeValue", "node": "terminusdb:///schema#_from"},
+    "object": {"@type": "Value", "variable": "Friend"}
+  }
+}
+
+=== CountFriends / Graph ===
+{
+  "query": {
+    "@type": "Path",
+    "subject": {"@type": "Value", "node": "terminusdb:///data/User/{{USER_ID_1}}"},
+    "pattern": {"@type": "PathPredicate", "predicate": "terminusdb:///schema#_from"},
+    "object": {"@type": "Value", "variable": "Friend"}
+  }
+}
+
+=== FindUsersWithMoreThanNFriends / Document ===
+# The measured source used threshold 10.
+{
+  "query": {
+    "@type": "And",
+    "and": [
+      {
+        "@type": "GroupBy",
+        "template": {"@type": "Value", "variable": "Friend"},
+        "group_by": ["User"],
+        "query": {
+          "@type": "Triple",
+          "subject": {"@type": "NodeValue", "variable": "User"},
+          "predicate": {"@type": "NodeValue", "node": "terminusdb:///schema#_from"},
+          "object": {"@type": "Value", "variable": "Friend"}
+        },
+        "grouped": {"@type": "Value", "variable": "Friends"}
+      },
+      {
+        "@type": "Length",
+        "list": {"@type": "DataValue", "variable": "Friends"},
+        "length": {"@type": "DataValue", "variable": "FriendCount"}
+      },
+      {
+        "@type": "Greater",
+        "left": {"@type": "DataValue", "variable": "FriendCount"},
+        "right": {"@type": "DataValue", "data": 10}
+      }
+    ]
+  }
+}
+
+=== FindUsersWithMoreThanNFriends / Graph ===
+# The measured source used threshold 10.
+{
+  "query": {
+    "@type": "And",
+    "and": [
+      {
+        "@type": "GroupBy",
+        "template": {"@type": "Value", "variable": "Friend"},
+        "group_by": ["User"],
+        "query": {
+          "@type": "Path",
+          "subject": {"@type": "Value", "variable": "User"},
+          "pattern": {"@type": "PathPredicate", "predicate": "terminusdb:///schema#_from"},
+          "object": {"@type": "Value", "variable": "Friend"}
+        },
+        "grouped": {"@type": "Value", "variable": "Friends"}
+      },
+      {
+        "@type": "Length",
+        "list": {"@type": "DataValue", "variable": "Friends"},
+        "length": {"@type": "DataValue", "variable": "FriendCount"}
+      },
+      {
+        "@type": "Greater",
+        "left": {"@type": "DataValue", "variable": "FriendCount"},
+        "right": {"@type": "DataValue", "data": 10}
+      }
+    ]
+  }
+}
+

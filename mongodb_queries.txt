@@ -1,0 +1,179 @@
+# MongoDB query templates used by the benchmark
+# Experiment values: USER_ID_1=297358566, USER_ID_2=301529877
+# Replace {{USER_ID_1}} and {{USER_ID_2}} before execution.
+
+=== FindFriends / Document ===
+{
+  aggregate: 'edges',
+  pipeline: [
+    { $match: { _from: 'user/{{USER_ID_1}}' } },
+    { $project: { _id: 0, _to: 1 } }
+  ],
+  cursor: { batchSize: 10000 }
+}
+
+=== FindFriends / Graph ===
+{
+  aggregate: 'edges',
+  pipeline: [
+    {
+      $graphLookup: {
+        from: 'edges',
+        startWith: 'user/{{USER_ID_1}}',
+        connectFromField: '_to',
+        connectToField: '_from',
+        as: 'friends',
+        maxDepth: 0
+      }
+    },
+    { $unwind: '$friends' },
+    { $project: { _id: 0, to: '$friends._to' } }
+  ],
+  cursor: { batchSize: 10000 }
+}
+
+=== FindFriendsOfFriends / Document ===
+{
+  aggregate: 'edges',
+  pipeline: [
+    { $match: { _from: 'user/{{USER_ID_1}}' } },
+    {
+      $lookup: {
+        from: 'edges',
+        localField: '_to',
+        foreignField: '_from',
+        as: 'secondHop'
+      }
+    },
+    { $unwind: '$secondHop' },
+    { $project: { _id: 0, _to: '$secondHop._to' } }
+  ],
+  cursor: { batchSize: 10000 }
+}
+
+=== FindFriendsOfFriends / Graph ===
+{
+  aggregate: 'edges',
+  pipeline: [
+    {
+      $graphLookup: {
+        from: 'edges',
+        startWith: 'user/{{USER_ID_1}}',
+        connectFromField: '_to',
+        connectToField: '_from',
+        as: 'friendsOfFriends',
+        maxDepth: 1
+      }
+    },
+    { $unwind: '$friendsOfFriends' },
+    { $project: { _id: 0, to: '$friendsOfFriends._to' } }
+  ],
+  cursor: { batchSize: 10000 }
+}
+
+=== FindMutualFriends / Document ===
+{
+  aggregate: 'edges',
+  pipeline: [
+    { $match: { _from: { $in: ['user/{{USER_ID_1}}', 'user/{{USER_ID_2}}'] } } },
+    { $group: { _id: '$_to', count: { $sum: 1 } } },
+    { $match: { count: { $gt: 1 } } },
+    { $project: { _id: 0, mutualFriend: '$_id' } }
+  ],
+  cursor: { batchSize: 10000 }
+}
+
+=== FindMutualFriends / Graph ===
+{
+  aggregate: 'edges',
+  pipeline: [
+    { $limit: 1 },
+    { $project: { _id: 0 } },
+    {
+      $graphLookup: {
+        from: 'edges',
+        startWith: 'user/{{USER_ID_1}}',
+        connectFromField: '_to',
+        connectToField: '_from',
+        as: 'friends1',
+        maxDepth: 0
+      }
+    },
+    {
+      $graphLookup: {
+        from: 'edges',
+        startWith: 'user/{{USER_ID_2}}',
+        connectFromField: '_to',
+        connectToField: '_from',
+        as: 'friends2',
+        maxDepth: 0
+      }
+    },
+    {
+      $project: {
+        mutualFriends: {
+          $setIntersection: ['$friends1._to', '$friends2._to']
+        }
+      }
+    },
+    { $unwind: '$mutualFriends' },
+    { $project: { _id: 0, mutualFriend: '$mutualFriends' } }
+  ],
+  cursor: { batchSize: 10000 }
+}
+
+=== CountFriends / Document ===
+{
+  aggregate: 'edges',
+  pipeline: [
+    { $match: { _from: 'user/{{USER_ID_1}}' } },
+    { $count: 'friendCount' }
+  ],
+  cursor: { batchSize: 10000 }
+}
+
+=== CountFriends / Graph ===
+{
+  aggregate: 'edges',
+  pipeline: [
+    { $limit: 1 },
+    { $project: { _id: 0 } },
+    {
+      $graphLookup: {
+        from: 'edges',
+        startWith: 'user/{{USER_ID_1}}',
+        connectFromField: '_to',
+        connectToField: '_from',
+        as: 'friends',
+        maxDepth: 0
+      }
+    },
+    { $project: { _id: 0, friendCount: { $size: '$friends' } } }
+  ],
+  cursor: { batchSize: 10000 }
+}
+
+=== FindUsersWithMoreThanNFriends / Document ===
+# The measured source used threshold 10 for this variant.
+{
+  aggregate: 'edges',
+  pipeline: [
+    { $group: { _id: '$_from', friendCount: { $sum: 1 } } },
+    { $match: { friendCount: { $gt: 10 } } },
+    { $project: { _id: 0, user: '$_id' } }
+  ],
+  cursor: { batchSize: 10000 }
+}
+
+=== FindUsersWithMoreThanNFriends / Graph ===
+# The measured source used threshold 3 for this variant.
+{
+  aggregate: 'edges',
+  pipeline: [
+    { $group: { _id: '$_from', friendCount: { $sum: 1 } } },
+    { $match: { friendCount: { $gt: 3 } } },
+    { $project: { _id: 0, user: '$_id' } }
+  ],
+  cursor: { batchSize: 10000 }
+}
+

@@ -1,0 +1,85 @@
+# ArangoDB AQL templates used by the benchmark
+# Experiment values: USER_ID_1=297358566, USER_ID_2=301529877
+# Replace {{USER_ID_1}} and {{USER_ID_2}} before execution.
+
+=== FindFriends / Document ===
+FOR edge IN edges
+  FILTER edge._from == 'users/{{USER_ID_1}}'
+  RETURN edge._to
+
+=== FindFriends / Graph ===
+FOR vertex, edge IN 1..1 OUTBOUND 'users/{{USER_ID_1}}' edges
+  RETURN vertex._key
+
+=== FindFriendsOfFriends / Document ===
+LET friends = (
+  FOR edge IN edges
+    FILTER edge._from == 'users/{{USER_ID_1}}'
+    RETURN edge._to
+)
+FOR friend IN friends
+  FOR edge IN edges
+    FILTER edge._from == friend
+    RETURN edge._to
+
+=== FindFriendsOfFriends / Graph ===
+FOR vertex, edge, path IN 2..2 OUTBOUND 'users/{{USER_ID_1}}' edges
+  RETURN vertex._key
+
+=== FindMutualFriends / Document ===
+LET friends1 = (
+  FOR edge IN edges
+    FILTER edge._from == 'users/{{USER_ID_1}}'
+    RETURN edge._to
+)
+LET friends2 = (
+  FOR edge IN edges
+    FILTER edge._from == 'users/{{USER_ID_2}}'
+    RETURN edge._to
+)
+FOR friend IN INTERSECTION(friends1, friends2)
+  RETURN friend
+
+=== FindMutualFriends / Graph ===
+LET friends1 = (
+  FOR vertex, edge IN 1..1 OUTBOUND 'users/{{USER_ID_1}}' edges
+    RETURN vertex._key
+)
+LET friends2 = (
+  FOR vertex, edge IN 1..1 OUTBOUND 'users/{{USER_ID_2}}' edges
+    RETURN vertex._key
+)
+FOR friend IN INTERSECTION(friends1, friends2)
+  RETURN friend
+
+=== CountFriends / Document ===
+RETURN LENGTH(
+  FOR edge IN edges
+    FILTER edge._from == 'users/{{USER_ID_1}}'
+    RETURN edge._to
+)
+
+=== CountFriends / Graph ===
+RETURN LENGTH(
+  FOR vertex, edge IN 1..1 OUTBOUND 'users/{{USER_ID_1}}' edges
+    RETURN vertex._key
+)
+
+=== FindUsersWithMoreThanNFriends / Document ===
+# The measured source used threshold 10.
+FOR edge IN edges
+  COLLECT from = edge._from INTO groups
+  LET count = LENGTH(groups)
+  FILTER count > 10
+  RETURN from
+
+=== FindUsersWithMoreThanNFriends / Graph ===
+# The measured source used threshold 10.
+FOR vertex IN users
+  LET friends = (
+    FOR v, e IN 1..1 OUTBOUND vertex edges
+      RETURN e._from
+  )
+  FILTER LENGTH(friends) > 10
+  RETURN vertex._key
+

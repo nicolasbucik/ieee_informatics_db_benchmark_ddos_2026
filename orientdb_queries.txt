@@ -1,0 +1,70 @@
+# OrientDB SQL and MATCH templates used by the benchmark
+# Experiment values: USER_ID_1=297358566, USER_ID_2=301529877
+# Replace {{USER_ID_1}} and {{USER_ID_2}} before execution.
+
+=== FindFriends / Document ===
+SELECT out('E') AS friends
+FROM V
+WHERE userId = '{{USER_ID_1}}'
+
+=== FindFriends / Graph ===
+MATCH {class: V, as: user, where: (userId = '{{USER_ID_1}}')}
+  .out('E'){as: friend}
+RETURN friend
+
+=== FindFriendsOfFriends / Document ===
+SELECT out('E').out('E') AS friendsOfFriends
+FROM V
+WHERE userId = '{{USER_ID_1}}'
+
+=== FindFriendsOfFriends / Graph ===
+MATCH {class: V, as: user, where: (userId = '{{USER_ID_1}}')}
+  .out('E'){as: friend}
+  .out('E'){as: friendOfFriend}
+RETURN friendOfFriend
+
+=== FindMutualFriends / Document ===
+SELECT expand(intersect(
+  (SELECT out('E') FROM V WHERE userId = '{{USER_ID_1}}'),
+  (SELECT out('E') FROM V WHERE userId = '{{USER_ID_2}}')
+))
+
+=== FindMutualFriends / Graph ===
+MATCH {class: V, as: u1, where: (userId = '{{USER_ID_1}}')}.out('E'){as: f1},
+      {class: V, as: u2, where: (userId = '{{USER_ID_2}}')}.out('E'){as: f2}
+WHERE f1 = f2
+RETURN f1
+
+=== CountFriends / Document ===
+SELECT COUNT(*) AS friendCount
+FROM (
+  SELECT expand(out('E'))
+  FROM V
+  WHERE userId = '{{USER_ID_1}}'
+)
+
+=== CountFriends / Graph ===
+MATCH {class: V, as: user, where: (userId = '{{USER_ID_1}}')}
+  .OUT('E')
+RETURN COUNT(*) AS friendCount
+
+=== FindUsersWithMoreThanNFriends / Document ===
+# The measured source used threshold 3.
+SELECT *
+FROM (
+  SELECT userId, COUNT(*) AS friends
+  FROM (SELECT expand(out('E')) AS tasd FROM V)
+  GROUP BY userId
+)
+WHERE friends > 3
+
+=== FindUsersWithMoreThanNFriends / Graph ===
+# The measured source used threshold 10.
+SELECT *
+FROM (
+  MATCH {class: V, as: user}.out('E')
+  RETURN user.userId, COUNT(*) AS friendCount
+  GROUP BY user.userId
+)
+WHERE friendCount > 10
+
